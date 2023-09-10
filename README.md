@@ -14,5 +14,5 @@ b.	Considers operating outside Manhattan city.
 •The different algorithm used for finding the centrality and detection of community is analysed in this assignment.  
 •The data set contains aggregate statistics of taxi trips undertaken in 2021.  
 
-For Further Information refer   
+For further information refer   
 [Click here](https://github.com/raj-akhil/Pyspark-Neo4j/blob/main/c1040918-presentation-video.pdf)
