@@ -1,0 +1,91 @@
+#####task_0######
+
+#####0.1#########
+match (z:zone)-[r:CONNECTS]->(z1:zone) where z.id=z1.id return z.id
+#####0.2#########
+MATCH (z:zone)WHERE NOT EXISTS { match (z:zone)-[r:CONNECTS]->(z_:zone) where not z=z_}RETURN z
+
+#####task1######
+
+# graph projection for community detection
+call gds.graph.create(
+    'c1040918-communities',
+    'zone',
+    {
+            CONNECTS:{
+            orientation:'undirected'
+        }
+    },
+    {
+        relationshipProperties:'trips'
+    }
+)
+
+# community stream
+
+CALL gds.louvain.stream('c1040918-communities')
+YIELD nodeId,communityId
+RETURN gds.util.asNode(nodeId).id as zone_id,communityId as community_id
+
+# community stats
+
+CALL gds.louvain.stats('c1040918-communities')
+YIELD communityCount
+
+#######task 2######
+
+#grapgh projection for centrality
+
+call gds.graph.create(
+    'c1040918-centrality',
+    'zone',
+    {
+            CONNECTS:{
+            orientation:'natural'
+        }
+    },
+    {
+        relationshipProperties:'trips'
+    }
+)
+
+
+#centrality stats
+
+CALL gds.pageRank.stats('c1040918-centrality', {
+    dampingFactor: 0.75
+})
+YIELD centralityDistribution
+RETURN centralityDistribution.max AS max,centralityDistribution.min as min
+
+#centrality-stream
+
+CALL gds.pageRank.stream('c1040918-centrality')
+YIELD nodeId, score
+RETURN gds.util.asNode(nodeId).id AS zone_id, score as centrality_score
+ORDER BY zone_id asc
+
+######task_3#######
+#task-3 with manhattan : finding the top 3 zone for each community based on centrality
+
+MATCH (n:zone)
+WITH n.community AS group, n.centrality AS value,n.id as zone_id
+ORDER BY group, value desc
+WITH group, COLLECT(value) AS values
+with group, values[0..3] AS top_3_values
+unwind top_3_values as top_3
+with group as community_id, top_3
+match (z1:zone) where z1.centrality=top_3
+return z1.id as zone_id,z1.community as community_id
+
+#task_3 without manhattan : finding the top 3 zone for each community based on centrality without considering manhattan 
+
+match (n:zone)-[r:IN]->(b:borough) where b.name<>'Manhattan'
+WITH n.community AS group, n.centrality AS value,n.id as zone_id
+ORDER BY group, value desc
+WITH group, COLLECT(value) AS values
+with group, values[0..3] AS top_3_values
+unwind top_3_values as top_3
+with group as community_id, top_3
+match (z1:zone) where z1.centrality=top_3
+return z1.id as zone_id,z1.community as community_id
